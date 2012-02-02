@@ -74,7 +74,9 @@ Monocle.Events.listenForContact = function (elem, fns, options) {
   var cursorInfo = function (evt, ci) {
     evt.m = {
       pageX: ci.pageX,
-      pageY: ci.pageY
+      pageY: ci.pageY,
+      clientX: ci.clientX,
+      clientY: ci.clientY
     };
 
     var target = evt.target || evt.srcElement;

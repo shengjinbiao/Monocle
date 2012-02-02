@@ -75,12 +75,14 @@
     listenForMoveAndEnd(readerContactMove, readerContactEnd);
     action.startX = evt.m.readerX;
     statusUpdate('Lifted from '+action.startX);
-    evt.preventDefault();
   }
 
 
   function readerContactMove(evt) {
     statusUpdate('Swiping from '+action.startX+' .. '+evt.m.readerX);
+    // Can't prevent mousemove, so has no effect there. Preventing default
+    // for touchmove will override scrolling, while still allowing selection.
+    evt.preventDefault();
   }
 
 
@@ -105,7 +107,6 @@
 
   function cmptContactStart(evt) {
     if (actionIsCancelled(evt)) { return resetAction(); }
-    evt.preventDefault();
     action.startX = evt.m.readerX;
     listenForMoveAndEnd(cmptContactMove, cmptContactEnd);
     statusUpdate('Contact on content at '+action.startX);
@@ -116,6 +117,10 @@
     if (actionIsEmpty()) { return; }
     if (actionIsCancelled(evt)) { return resetAction(); }
     statusUpdate('Contact on content at '+action.startX+' .. '+evt.m.readerX);
+
+    // Can't prevent mousemove, so has no effect there. Preventing default
+    // for touchmove will override scrolling, while still allowing selection.
+    evt.preventDefault();
   }
 
 
@@ -146,7 +151,9 @@
   // Then calls the passed function.
   //
   function translatorFunction(registrant, callback) {
-    return function (evt) { translatingReaderOffset(registrant, evt, callback); }
+    return function (evt) {
+      translatingReaderOffset(registrant, evt, callback);
+    }
   }
 
 
@@ -158,8 +165,8 @@
       evt.m.readerY = Math.round(evt.m.pageY - rr.top);
     } else {
       var er = registrant.getBoundingClientRect();
-      evt.m.readerX = Math.round((er.left - rr.left) + evt.clientX);
-      evt.m.readerY = Math.round((er.top - rr.top) + evt.clientY);
+      evt.m.readerX = Math.round((er.left - rr.left) + evt.m.clientX);
+      evt.m.readerY = Math.round((er.top - rr.top) + evt.m.clientY);
     }
 
     callback(evt);
