@@ -55,8 +55,10 @@ Monocle.Events.deafen = function (elem, evtType, fn, useCapture) {
 // Each function is passed the event, with additional generic info about the
 // cursor/touch position:
 //
-//    event.m.offsetX (& offsetY) -- relative to top-left of document
-//    event.m.registrantX (& registrantY) -- relative to top-left of elem
+//    event.m.offsetX (& offsetY) -- relative to top-left of the element
+//                                   on which the event fired
+//    event.m.registrantX (& registrantY) -- relative to top-left of element
+//                                           on which the event is listening
 //
 // 'options' argument:
 //
@@ -87,7 +89,7 @@ Monocle.Events.listenForContact = function (elem, fns, options) {
     evt.m.offsetY = offset[1];
 
     // The position of contact from the top left of the element
-    // on which the event is registered.
+    // on which the event is listening.
     if (evt.currentTarget) {
       offset = offsetFor(evt, evt.currentTarget);
       evt.m.registrantX = offset[0];
@@ -151,30 +153,30 @@ Monocle.Events.listenForContact = function (elem, fns, options) {
     }
   } else {
     if (fns.start) {
-      listeners.start = function (evt) {
+      listeners.touchstart = function (evt) {
         if (evt.touches.length > 1) { return; }
         fns.start(cursorInfo(evt, evt.targetTouches[0]));
       }
     }
     if (fns.move) {
-      listeners.move = function (evt) {
+      listeners.touchmove = function (evt) {
         if (evt.touches.length > 1) { return; }
         fns.move(cursorInfo(evt, evt.targetTouches[0]));
       }
     }
     if (fns.end) {
-      listeners.end = function (evt) {
+      listeners.touchend = function (evt) {
         fns.end(cursorInfo(evt, evt.changedTouches[0]));
       }
     }
     if (fns.cancel) {
-      listeners.cancel = function (evt) {
+      listeners.touchcancel = function (evt) {
         fns.cancel(cursorInfo(evt, evt.changedTouches[0]));
       }
     }
 
     for (etype in listeners) {
-      Monocle.Events.listen(elem, 'touch'+etype, listeners[etype], capture);
+      Monocle.Events.listen(elem, etype, listeners[etype], capture);
     }
   }
 
@@ -186,13 +188,8 @@ Monocle.Events.listenForContact = function (elem, fns, options) {
 // are registered to them -- de-registers the functions from the events.
 //
 Monocle.Events.deafenForContact = function (elem, listeners) {
-  var prefix = "";
-  if (Monocle.Browser.env.touch) {
-    prefix = "touch";
-  }
-
   for (evtType in listeners) {
-    Monocle.Events.deafen(elem, prefix + evtType, listeners[evtType]);
+    Monocle.Events.deafen(elem, evtType, listeners[evtType]);
   }
 }
 
