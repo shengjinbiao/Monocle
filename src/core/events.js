@@ -90,7 +90,10 @@ Monocle.Events.listenForContact = function (elem, fns, options) {
 
     // The position of contact from the top left of the element
     // on which the event is listening.
-    if (evt.currentTarget) {
+    if (
+      evt.currentTarget &&
+      typeof evt.currentTarget.offsetLeft != 'undefined'
+    ) {
       offset = offsetFor(evt, evt.currentTarget);
       evt.m.registrantX = offset[0];
       evt.m.registrantY = offset[1];
@@ -103,9 +106,7 @@ Monocle.Events.listenForContact = function (elem, fns, options) {
   var offsetFor = function (evt, elem) {
     var r;
     if (elem.getBoundingClientRect) {
-      var er = elem.getBoundingClientRect();
-      var dr = document.documentElement.getBoundingClientRect();
-      r = { left: er.left - dr.left, top: er.top - dr.top };
+      r = elem.getBoundingClientRect();
     } else {
       r = { left: elem.offsetLeft, top: elem.offsetTop }
       while (elem = elem.offsetParent) {

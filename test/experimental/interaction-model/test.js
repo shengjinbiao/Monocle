@@ -22,7 +22,7 @@
   function initListeners() {
     Monocle.Events.listenForContact(
       parts.reader,
-      { 'start': readerContactStart }
+      { 'start': translatorFunction(parts.reader, readerContactStart) }
     );
     Monocle.Events.listenForContact(
       parts.cmpts[0].contentDocument.defaultView,
@@ -36,7 +36,11 @@
 
 
   function listenForMoveAndEnd(fnMove, fnEnd) {
-    listenOnElem(document.defaultView, fnMove, fnEnd);
+    listenOnElem(
+      document.defaultView,
+      translatorFunction(document.documentElement, fnMove),
+      translatorFunction(document.documentElement, fnEnd)
+    );
     for (var i = 0, ii = parts.cmpts.length; i < ii; ++i) {
       listenOnElem(
         parts.cmpts[i].contentDocument.defaultView,
@@ -69,19 +73,19 @@
 
   function readerContactStart(evt) {
     listenForMoveAndEnd(readerContactMove, readerContactEnd);
-    action.startX = evt.m.pageX;
+    action.startX = evt.m.readerX;
     statusUpdate('Lifted from '+action.startX);
     evt.preventDefault();
   }
 
 
   function readerContactMove(evt) {
-    statusUpdate('Swiping from '+action.startX+' .. '+evt.m.pageX);
+    statusUpdate('Swiping from '+action.startX+' .. '+evt.m.readerX);
   }
 
 
   function readerContactEnd(evt) {
-    action.endX = evt.m.pageX;
+    action.endX = evt.m.readerX;
     if (action.startX > halfway()) {
       if (action.endX < action.startX + LEEWAY) {
         statusUpdate('Released: turned forward');
@@ -102,7 +106,7 @@
   function cmptContactStart(evt) {
     if (actionIsCancelled(evt)) { return resetAction(); }
     evt.preventDefault();
-    action.startX = evt.m.pageX;
+    action.startX = evt.m.readerX;
     listenForMoveAndEnd(cmptContactMove, cmptContactEnd);
     statusUpdate('Contact on content at '+action.startX);
   }
@@ -111,14 +115,14 @@
   function cmptContactMove(evt) {
     if (actionIsEmpty()) { return; }
     if (actionIsCancelled(evt)) { return resetAction(); }
-    statusUpdate('Contact on content at '+action.startX+' .. '+evt.m.pageX);
+    statusUpdate('Contact on content at '+action.startX+' .. '+evt.m.readerX);
   }
 
 
   function cmptContactEnd(evt) {
     if (actionIsEmpty()) { return; }
     if (actionIsCancelled(evt)) { return resetAction(); }
-    action.endX = evt.m.pageX;
+    action.endX = evt.m.readerX;
     if (Math.abs(action.endX - action.startX) < LEEWAY) {
       if (action.startX > halfway()) {
         statusUpdate('Tap on content: turned forward');
@@ -133,25 +137,37 @@
   }
 
 
-  function translatingCmptOffset(cmpt, evt, callback) {
-    var n = cmpt, x = 0;
-    while (n) {
-      x += n.offsetLeft;
-      n = n.offsetParent;
+  // Adds two new properties to evt.m:
+  // - readerX
+  // - readerY
+  //
+  // Calculated as the offset of the click from the top left of reader element.
+  //
+  // Then calls the passed function.
+  //
+  function translatorFunction(registrant, callback) {
+    return function (evt) { translatingReaderOffset(registrant, evt, callback); }
+  }
+
+
+  function translatingReaderOffset(registrant, evt, callback) {
+    var rr = parts.reader.getBoundingClientRect();
+
+    if (evt.target.ownerDocument.defaultView == window) {
+      evt.m.readerX = Math.round(evt.m.pageX - rr.left);
+      evt.m.readerY = Math.round(evt.m.pageY - rr.top);
+    } else {
+      var er = registrant.getBoundingClientRect();
+      evt.m.readerX = Math.round((er.left - rr.left) + evt.clientX);
+      evt.m.readerY = Math.round((er.top - rr.top) + evt.clientY);
     }
-    evt.m.pageX += x;
-    evt.m.component = cmpt;
+
     callback(evt);
   }
 
 
-  function translatorFunction(cmpt, fn) {
-    return function (evt) { translatingCmptOffset(cmpt, evt, fn); }
-  }
-
-
   function halfway() {
-    return document.documentElement.scrollWidth / 2;
+    return parts.reader.offsetWidth / 2;
   }
 
 
@@ -167,11 +183,8 @@
 
 
   function actionIsCancelled(evt) {
-    var cmpt = evt.m.component;
-    return (
-      evt.defaultPrevented ||
-      (cmpt && !cmpt.contentWindow.getSelection().isCollapsed)
-    );
+    var win = evt.target.ownerDocument.defaultView;
+    return (evt.defaultPrevented || !win.getSelection().isCollapsed);
   }
 
 
