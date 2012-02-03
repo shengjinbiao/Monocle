@@ -74,6 +74,9 @@
   function readerContactStart(evt) {
     listenForMoveAndEnd(readerContactMove, readerContactEnd);
     action.startX = evt.m.readerX;
+    action.startY = evt.m.readerY;
+    action.screenX = evt.m.screenX;
+    action.screenY = evt.m.screenY;
     statusUpdate('Lifted from '+action.startX);
   }
 
@@ -108,6 +111,9 @@
   function cmptContactStart(evt) {
     if (actionIsCancelled(evt)) { return resetAction(); }
     action.startX = evt.m.readerX;
+    action.startY = evt.m.readerY;
+    action.screenX = evt.m.screenX;
+    action.screenY = evt.m.screenY;
     listenForMoveAndEnd(cmptContactMove, cmptContactEnd);
     statusUpdate('Contact on content at '+action.startX);
   }
@@ -158,15 +164,53 @@
 
 
   function translatingReaderOffset(registrant, evt, callback) {
-    var rr = parts.reader.getBoundingClientRect();
+    // The problem is that the Android browser lies. It says that the
+    // event's view is always the originating window for the touch, BUT it
+    // calculates pageX against whatever window the touch is currently in.
+    // It seems there's no way to detect which 'page' the pageX refers to!
+    //
+    // But, since we know it's not lying for the originating event (the
+    // touchstart), we can calculate all subsequent cursor movement relative
+    // to this point, using screen coordinates.
 
-    if (evt.target.ownerDocument.defaultView == window) {
-      evt.m.readerX = Math.round(evt.m.pageX - rr.left);
-      evt.m.readerY = Math.round(evt.m.pageY - rr.top);
+    if (typeof action.screenX != 'undefined') {
+      evt.m.readerX = action.startX + (evt.m.screenX - action.screenX);
+      evt.m.readerY = action.startY + (evt.m.screenY - action.screenY);
+      // statusUpdate([
+      //   "CONTINUATION CALC: ",
+      //   "action.startX: "+action.startX,
+      //   "action.screenX: "+action.screenX,
+      //   "evt.m.screenX: "+evt.m.screenX,
+      //   "differential: "+(evt.m.screenX - action.screenX),
+      //   "=> "+evt.m.readerX+","+evt.m.readerY
+      // ].join("\n"));
     } else {
-      var er = registrant.getBoundingClientRect();
-      evt.m.readerX = Math.round((er.left - rr.left) + evt.m.clientX);
-      evt.m.readerY = Math.round((er.top - rr.top) + evt.m.clientY);
+      var dr = document.documentElement.getBoundingClientRect();
+      var rr = parts.reader.getBoundingClientRect();
+      rr = { left: rr.left - dr.left, top: rr.top - dr.top }
+
+      if (evt.view == window) {
+        evt.m.readerX = Math.round(evt.m.pageX - rr.left);
+        evt.m.readerY = Math.round(evt.m.pageY - rr.top);
+        // statusUpdate([
+        //   "TOP LEVEL CALC: ",
+        //   "rr.left: "+rr.left,
+        //   "evt.m.pageX: "+evt.m.pageX,
+        //   "=> "+evt.m.readerX
+        // ].join("\n"));
+      } else {
+        var er = registrant.getBoundingClientRect();
+        er = { left: er.left - dr.left, top: er.top - dr.top }
+        evt.m.readerX = Math.round((er.left - rr.left) + evt.m.clientX);
+        evt.m.readerY = Math.round((er.top - rr.top) + evt.m.clientY);
+        // statusUpdate([
+        //   "CONTENT-LEVEL CALC: ",
+        //   "er.left: "+er.left,
+        //   "rr.left: "+rr.left,
+        //   "evt.m.clientX: "+evt.m.clientX,
+        //   "=> "+evt.m.readerX
+        // ].join("\n"));
+      }
     }
 
     callback(evt);
@@ -185,6 +229,7 @@
 
   function resetAction() {
     action = {};
+    deafenContactListeners();
     statusUpdate('Cancelled.');
   }
 

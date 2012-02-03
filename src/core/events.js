@@ -76,7 +76,9 @@ Monocle.Events.listenForContact = function (elem, fns, options) {
       pageX: ci.pageX,
       pageY: ci.pageY,
       clientX: ci.clientX,
-      clientY: ci.clientY
+      clientY: ci.clientY,
+      screenX: ci.screenX,
+      screenY: ci.screenY
     };
 
     var target = evt.target || evt.srcElement;
@@ -108,7 +110,11 @@ Monocle.Events.listenForContact = function (elem, fns, options) {
   var offsetFor = function (evt, elem) {
     var r;
     if (elem.getBoundingClientRect) {
-      r = elem.getBoundingClientRect();
+      // Why subtract documentElement position? It's always zero, right?
+      // Nope, not on Android when zoomed in.
+      var dr = document.documentElement.getBoundingClientRect();
+      var er = elem.getBoundingClientRect();
+      r = { left: er.left - dr.left, top: er.top - dr.top };
     } else {
       r = { left: elem.offsetLeft, top: elem.offsetTop }
       while (elem = elem.offsetParent) {

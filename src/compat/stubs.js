@@ -22,10 +22,12 @@ window.console.compatDir = function (obj) {
     for (x in o) {
       parts.push(x + ": " + o[x]);
     }
-    return parts.join("; ");
+    return parts.join(";\n");
   }
 
-  window.console.log(stringify(obj));
+  var out = stringify(obj);
+  window.console.log(out);
+  return out;
 }
 
 
